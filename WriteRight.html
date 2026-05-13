@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WriteRight — AI Writing Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2128;
+    --surface3: #252931;
+    --border: #2e333d;
+    --border2: #3a4050;
+    --text: #e8eaf0;
+    --text2: #9aa0b0;
+    --text3: #5c6270;
+    --accent: #7c6af7;
+    --accent2: #9d8ff8;
+    --accent-bg: rgba(124, 106, 247, 0.12);
+    --green: #3ecf8e;
+    --green-bg: rgba(62, 207, 142, 0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245, 166, 35, 0.1);
+    --red: #f06060;
+    --red-bg: rgba(240, 96, 96, 0.1);
+    --blue: #5cb8ff;
+    --blue-bg: rgba(92, 184, 255, 0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+  }
+
+  .logo span { color: var(--accent2); }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+
+  .badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--accent-bg);
+    color: var(--accent2);
+    border: 1px solid rgba(124,106,247,0.25);
+  }
+
+  .btn {
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--surface3); border-color: var(--border2); }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Layout */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 61px);
+  }
+
+  /* Editor panel */
+  .editor-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    gap: 12px;
+  }
+
+  .toolbar-left { display: flex; align-items: center; gap: 10px; }
+  .toolbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .mode-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .check-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text3);
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+  }
+  .dot.checking { background: var(--amber); animation: pulse 1s infinite; }
+  .dot.done { background: var(--green); }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Editor */
+  .editor-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 60px;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .editor-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .doc-title {
+    font-family: 'Lora', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    margin-bottom: 6px;
+    letter-spacing: -0.4px;
+  }
+
+  .doc-title::placeholder { color: var(--text3); }
+
+  .divider-line {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+  }
+
+  #editor {
+    font-family: 'Lora', serif;
+    font-size: 17px;
+    line-height: 1.85;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    outline: none;
+    width: 100%;
+    min-height: 400px;
+    resize: none;
+    caret-color: var(--accent2);
+  }
+
+  #editor::placeholder {
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  /* Highlighted text underlines */
+  .highlight-wrap { position: relative; display: inline; }
+  .err-grammar { text-decoration: underline wavy var(--red); text-underline-offset: 3px; cursor: pointer; }
+  .err-spelling { text-decoration: underline wavy var(--amber); text-underline-offset: 3px; cursor: pointer; }
+  .err-style { text-decoration: underline dotted var(--blue); text-underline-offset: 3px; cursor: pointer; }
+  .err-suggestion { text-decoration: underline dotted var(--green); text-underline-offset: 3px; cursor: pointer; }
+
+  /* Stats bar */
+  .stats-bar {
+    padding: 8px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  .stat { display: flex; align-items: center; gap: 5px; }
+  .stat strong { color: var(--text2); font-weight: 500; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 320px;
+    min-width: 320px;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .tab.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent);
+  }
+
+  .sidebar-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Issue cards */
+  .issue-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .issue-card:hover { border-color: var(--border2); background: var(--surface3); }
+  .issue-card.active { border-color: var(--accent); }
+
+  .issue-type {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .issue-type.grammar { color: var(--red); }
+  .issue-type.spelling { color: var(--amber); }
+  .issue-type.style { color: var(--blue); }
+  .issue-type.suggestion { color: var(--green); }
+
+  .type-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .grammar .type-dot { background: var(--red); }
+  .spelling .type-dot { background: var(--amber); }
+  .style .type-dot { background: var(--blue); }
+  .suggestion .type-dot { background: var(--green); }
+
+  .issue-original {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 5px;
+    font-style: italic;
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
+
+  .issue-fix {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .issue-reason {
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .issue-actions { display: flex; gap: 6px; }
+
+  /* Style Profile */
+  .style-section { margin-bottom: 20px; }
+
+  .style-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .style-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .style-item-name { color: var(--text2); }
+  .style-item-val { color: var(--accent2); font-weight: 500; font-family: 'DM Mono', monospace; }
+
+  .word-chip {
+    display: inline-block;
+    background: var(--accent-bg);
+    color: var(--accent2);
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    margin: 3px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* Popup tooltip */
+  .popup {
+    position: fixed;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    max-width: 280px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+    font-size: 13px;
+  }
+
+  .popup.show { display: block; }
+
+  .popup-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .popup-fix {
+    color: var(--green);
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .popup-reason {
+    color: var(--text2);
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .popup-actions { display: flex; gap: 6px; }
+
+  /* Score ring */
+  .score-wrap {
+    text-align: center;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .score-ring {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 10px;
+    position: relative;
+  }
+
+  .score-ring svg { transform: rotate(-90deg); }
+
+  .score-num {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .score-label { font-size: 13px; color: var(--text2); }
+
+  .count-badges {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .count-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .count-badge.grammar { background: var(--red-bg); color: var(--red); }
+  .count-badge.spelling { background: var(--amber-bg); color: var(--amber); }
+  .count-badge.style { background: var(--blue-bg); color: var(--blue); }
+
+  /* Loading overlay for AI call */
+  .ai-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text3);
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Model Manager Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    width: 480px;
+    max-width: 95vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-title { font-size: 16px; font-weight: 600; }
+
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+
+  .modal-section { margin-bottom: 22px; }
+
+  .modal-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .ollama-url-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .ollama-url-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    outline: none;
+  }
+
+  .ollama-url-row input:focus { border-color: var(--accent); }
+
+  .conn-status {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
+  }
+
+  .model-add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .model-add-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    outline: none;
+  }
+
+  .model-add-row input:focus { border-color: var(--accent); }
+  .model-add-row input::placeholder { color: var(--text3); font-style: italic; }
+
+  .model-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .model-item:hover { border-color: var(--border2); }
+  .model-item.active { border-color: var(--accent); background: var(--accent-bg); }
+
+  .model-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
+  .model-item.active .model-dot { background: var(--accent); }
+
+  .model-name {
+    flex: 1;
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text);
+  }
+
+  .model-source {
+    font-size: 11px;
+    color: var(--text3);
+    padding: 2px 7px;
+    background: var(--surface3);
+    border-radius: 10px;
+  }
+
+  .model-del {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+  }
+
+  .model-del:hover { color: var(--red); background: var(--red-bg); }
+
+  .hint-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    font-family: 'DM Mono', monospace;
+    margin-top: 8px;
+  }
+
+  .hint-box strong { color: var(--amber); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+  /* Rendered editor display */
+  #rendered {
+    font-family: 'Lora', serif;
+    font-size: 17px;
+    line-height: 1.85;
+    color: var(--text);
+    min-height: 400px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    position: relative;
+  }
+
+  #rendered mark {
+    background: none;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  #rendered mark.grammar { text-decoration: underline wavy var(--red); text-underline-offset: 4px; }
+  #rendered mark.spelling { text-decoration: underline wavy var(--amber); text-underline-offset: 4px; }
+  #rendered mark.style { text-decoration: underline dotted var(--blue); text-underline-offset: 4px; }
+  #rendered mark.suggestion { text-decoration: underline dotted var(--green); text-underline-offset: 4px; }
+
+  .editor-container {
+    position: relative;
+  }
+
+  #editor {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    opacity: 0;
+    z-index: 2;
+    resize: none;
+    background: transparent;
+  }
+
+  #rendered { z-index: 1; }
+
+  /* Notification */
+  .notif {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    max-width: 320px;
+  }
+
+  .notif.show { opacity: 1; transform: translateY(0); }
+  .notif-icon { font-size: 16px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">✍</div>
+    Write<span>Right</span>
+  </div>
+  <div class="header-actions">
+    <span class="badge" id="ollamaBadge">⬡ Ollama Local</span>
+    <button class="btn btn-sm" id="modelMgrBtn">⚙ Models</button>
+    <button class="btn btn-sm" id="clearBtn">Clear</button>
+    <button class="btn btn-primary btn-sm" id="checkBtn">Check Writing ↗</button>
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Editor panel -->
+  <div class="editor-panel">
+    <div class="editor-toolbar">
+      <div class="toolbar-left">
+        <select class="mode-select" id="modelSelect" title="Active Ollama model"></select>
+        <select class="mode-select" id="modeSelect">
+          <option value="general">General Writing</option>
+          <option value="formal">Formal / Professional</option>
+          <option value="casual">Casual / Conversational</option>
+          <option value="academic">Academic</option>
+          <option value="creative">Creative Writing</option>
+        </select>
+      </div>
+      <div class="check-status" id="checkStatus">
+        <div class="dot" id="statusDot"></div>
+        <span id="statusText">Start writing to check</span>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-sm" id="autoCheckBtn" title="Toggle auto-check">Auto ✓</button>
+      </div>
+    </div>
+
+    <div class="editor-wrap">
+      <div class="editor-inner">
+        <input type="text" class="doc-title" id="docTitle" placeholder="Document title…" />
+        <div class="divider-line"></div>
+        <div class="editor-container">
+          <div id="rendered"></div>
+          <textarea id="editor" placeholder="Start writing here. WriteRight will learn your style and correct your grammar as you go…" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><strong id="wordCount">0</strong> words</div>
+      <div class="stat"><strong id="charCount">0</strong> chars</div>
+      <div class="stat"><strong id="sentCount">0</strong> sentences</div>
+      <div class="stat"><strong id="readTime">0</strong> min read</div>
+      <div class="stat" style="margin-left:auto;"><span id="issueCount" style="color:var(--text3)">No issues found</span></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="tab active" data-tab="issues">Issues</div>
+      <div class="tab" data-tab="style">My Style</div>
+    </div>
+
+    <div class="sidebar-body">
+
+      <!-- Score -->
+      <div class="score-wrap">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#2e333d" stroke-width="6"/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#7c6af7" stroke-width="6"
+              stroke-dasharray="213.6" id="scoreCircle" stroke-dashoffset="213.6"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="score-num" id="scoreNum">—</div>
+        </div>
+        <div class="score-label">Writing Score</div>
+        <div class="count-badges">
+          <div class="count-badge grammar"><span id="grammarCount">0</span> grammar</div>
+          <div class="count-badge spelling"><span id="spellingCount">0</span> spelling</div>
+          <div class="count-badge style"><span id="styleCount">0</span> style</div>
+        </div>
+      </div>
+
+      <!-- Issues panel -->
+      <div class="tab-panel active" id="tab-issues">
+        <div class="empty-state" id="emptyIssues">
+          <div class="empty-icon">🔍</div>
+          <div>Click <strong>Check Writing</strong> or start typing.<br/>Issues will appear here.</div>
+        </div>
+        <div id="issuesList"></div>
+      </div>
+
+      <!-- Style panel -->
+      <div class="tab-panel" id="tab-style">
+        <div class="style-section">
+          <div class="style-label">Writing Profile</div>
+          <div class="style-item">
+            <span class="style-item-name">Avg sentence length</span>
+            <span class="style-item-val" id="pAvgSent">—</span>
+          </div>
+          <div class="style-item">
+            <span class="style-item-name">Vocabulary richness</span>
+            <span class="style-item-val" id="pVocab">—</span>
+          </div>
+          <div class="style-item">
+            <span class="style-item-name">Avg word length</span>
+            <span class="style-item-val" id="pAvgWord">—</span>
+          </div>
+          <div class="style-item">
+            <span class="style-item-name">Passive voice %</span>
+            <span class="style-item-val" id="pPassive">—</span>
+          </div>
+          <div class="style-item">
+            <span class="style-item-name">Tone</span>
+            <span class="style-item-val" id="pTone">—</span>
+          </div>
+        </div>
+        <div class="style-section">
+          <div class="style-label">Your Frequent Words</div>
+          <div id="freqWords"><div style="font-size:13px;color:var(--text3);">Write more to build your profile.</div></div>
+        </div>
+        <div class="style-section">
+          <div class="style-label">Corrections Accepted</div>
+          <div id="acceptedList"><div style="font-size:13px;color:var(--text3);">No accepted corrections yet.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<!-- Popup tooltip -->
+<div class="popup" id="popup">
+  <div class="popup-title" id="popupTitle">Grammar</div>
+  <div class="popup-fix" id="popupFix"></div>
+  <div class="popup-reason" id="popupReason"></div>
+  <div class="popup-actions">
+    <button class="btn btn-primary btn-sm" id="popupAccept">Accept</button>
+    <button class="btn btn-sm" id="popupIgnore">Ignore</button>
+  </div>
+</div>
+
+<!-- Model Manager Modal -->
+<div class="modal-backdrop" id="modelModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⬡ Ollama Model Manager</div>
+      <button class="btn btn-sm" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="modal-section">
+        <div class="modal-section-label">Ollama Server URL</div>
+        <div class="ollama-url-row">
+          <input type="text" id="ollamaUrl" value="http://localhost:11434" placeholder="http://localhost:11434" />
+          <button class="btn btn-sm" id="testConn">Test Connection</button>
+        </div>
+        <div class="conn-status" id="connStatus">
+          <div class="dot"></div>
+          <span>Not tested yet</span>
+        </div>
+        <div class="hint-box">
+          <strong>Start Ollama with CORS enabled:</strong><br/>
+          <code>OLLAMA_ORIGINS="*" ollama serve</code><br/><br/>
+          On Windows (PowerShell):<br/>
+          <code>$env:OLLAMA_ORIGINS="*"; ollama serve</code>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Add Model</div>
+        <div class="model-add-row">
+          <input type="text" id="newModelInput" placeholder="e.g. llama3, mistral, phi3, gemma2…" />
+          <button class="btn btn-primary btn-sm" id="addModelBtn">Add</button>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;">
+          Type the exact model name as shown in <code style="color:var(--accent2);">ollama list</code>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Your Models</div>
+        <div class="model-list" id="modelList"></div>
+        <div id="fetchModelsWrap" style="margin-top:10px;">
+          <button class="btn btn-sm" id="fetchModelsBtn" style="width:100%;">↓ Fetch from Ollama</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<div class="notif" id="notif">
+  <span class="notif-icon" id="notifIcon">✓</span>
+  <span id="notifText">Done</span>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const rendered = document.getElementById('rendered');
+const checkBtn = document.getElementById('checkBtn');
+const clearBtn = document.getElementById('clearBtn');
+const autoCheckBtn = document.getElementById('autoCheckBtn');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const popup = document.getElementById('popup');
+const issuesList = document.getElementById('issuesList');
+const emptyIssues = document.getElementById('emptyIssues');
+
+let issues = [];
+let styleProfile = JSON.parse(localStorage.getItem('wr_style') || '{}');
+let acceptedCorrections = JSON.parse(localStorage.getItem('wr_accepted') || '[]');
+let ignoredIssues = new Set();
+let autoCheck = false;
+let checkTimer = null;
+let currentPopupIssue = null;
+let isChecking = false;
+
+// ── Ollama config ──
+let ollamaUrl = localStorage.getItem('wr_ollama_url') || 'http://localhost:11434';
+let models = JSON.parse(localStorage.getItem('wr_models') || '["llama3","mistral"]');
+let activeModel = localStorage.getItem('wr_active_model') || models[0];
+
+function saveOllamaConfig() {
+  localStorage.setItem('wr_ollama_url', ollamaUrl);
+  localStorage.setItem('wr_models', JSON.stringify(models));
+  localStorage.setItem('wr_active_model', activeModel);
+}
+
+function populateModelSelect() {
+  const sel = document.getElementById('modelSelect');
+  sel.innerHTML = models.map(m =>
+    `<option value="${m}" ${m === activeModel ? 'selected' : ''}>${m}</option>`
+  ).join('');
+}
+
+document.getElementById('modelSelect').addEventListener('change', (e) => {
+  activeModel = e.target.value;
+  saveOllamaConfig();
+  notify('⬡', `Model: ${activeModel}`);
+});
+
+// ── Model Manager ──
+const modelModal = document.getElementById('modelModal');
+
+document.getElementById('modelMgrBtn').addEventListener('click', () => {
+  document.getElementById('ollamaUrl').value = ollamaUrl;
+  renderModelList();
+  modelModal.classList.add('show');
+});
+
+document.getElementById('closeModal').addEventListener('click', () => modelModal.classList.remove('show'));
+modelModal.addEventListener('click', (e) => { if (e.target === modelModal) modelModal.classList.remove('show'); });
+
+function renderModelList() {
+  const el = document.getElementById('modelList');
+  if (!models.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">No models added yet.</div>';
+    return;
+  }
+  el.innerHTML = models.map((m, i) => `
+    <div class="model-item ${m === activeModel ? 'active' : ''}" onclick="setActiveModel('${m}')">
+      <div class="model-dot"></div>
+      <div class="model-name">${m}</div>
+      ${m === activeModel ? '<span class="model-source">active</span>' : ''}
+      <button class="model-del" onclick="event.stopPropagation();deleteModel(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+window.setActiveModel = function(m) {
+  activeModel = m;
+  saveOllamaConfig();
+  populateModelSelect();
+  renderModelList();
+  notify('⬡', `Switched to ${m}`);
+};
+
+window.deleteModel = function(i) {
+  const removed = models[i];
+  models.splice(i, 1);
+  if (activeModel === removed) activeModel = models[0] || '';
+  saveOllamaConfig();
+  populateModelSelect();
+  renderModelList();
+};
+
+document.getElementById('addModelBtn').addEventListener('click', () => {
+  const inp = document.getElementById('newModelInput');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (models.includes(name)) { notify('⚠', 'Model already in list'); return; }
+  models.push(name);
+  if (!activeModel) activeModel = name;
+  saveOllamaConfig();
+  populateModelSelect();
+  renderModelList();
+  inp.value = '';
+  notify('✓', `Added model: ${name}`);
+});
+
+document.getElementById('newModelInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addModelBtn').click();
+});
+
+// Test connection
+document.getElementById('testConn').addEventListener('click', async () => {
+  const url = document.getElementById('ollamaUrl').value.trim();
+  const statusEl = document.getElementById('connStatus');
+  statusEl.innerHTML = '<div class="dot checking"></div><span>Testing…</span>';
+  try {
+    const r = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      ollamaUrl = url;
+      saveOllamaConfig();
+      statusEl.innerHTML = '<div class="dot done"></div><span style="color:var(--green)">Connected ✓</span>';
+    } else {
+      statusEl.innerHTML = `<div class="dot" style="background:var(--red)"></div><span style="color:var(--red)">HTTP ${r.status}</span>`;
+    }
+  } catch(e) {
+    statusEl.innerHTML = `<div class="dot" style="background:var(--red)"></div><span style="color:var(--red)">Cannot reach Ollama — is it running?</span>`;
+  }
+});
+
+// Fetch models from Ollama
+document.getElementById('fetchModelsBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('fetchModelsBtn');
+  btn.textContent = 'Fetching…';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error('bad response');
+    const data = await r.json();
+    const fetched = (data.models || []).map(m => m.name);
+    let added = 0;
+    fetched.forEach(m => { if (!models.includes(m)) { models.push(m); added++; } });
+    if (!activeModel && models.length) activeModel = models[0];
+    saveOllamaConfig();
+    populateModelSelect();
+    renderModelList();
+    notify('✓', `Fetched ${fetched.length} models, added ${added} new`);
+  } catch(e) {
+    notify('✕', 'Could not fetch — check URL and CORS');
+  } finally {
+    btn.textContent = '↓ Fetch from Ollama';
+    btn.disabled = false;
+  }
+});
+
+// ── Editor sync ──
+function syncRendered() {
+  const text = editor.value;
+  if (!issues.length) {
+    rendered.textContent = text;
+    return;
+  }
+  renderHighlights(text, issues);
+}
+
+function renderHighlights(text, issueList) {
+  const visible = issueList.filter(i => !ignoredIssues.has(i.id));
+  if (!visible.length) { rendered.textContent = text; return; }
+
+  let result = '';
+  let lastIdx = 0;
+
+  const sorted = [...visible].sort((a,b) => a.offset - b.offset);
+
+  for (const issue of sorted) {
+    if (issue.offset < lastIdx) continue;
+    const end = issue.offset + issue.original.length;
+    if (end > text.length) continue;
+
+    result += escHtml(text.slice(lastIdx, issue.offset));
+    result += `<mark class="${issue.type}" data-id="${issue.id}" title="${issue.reason}">${escHtml(text.slice(issue.offset, end))}</mark>`;
+    lastIdx = end;
+  }
+  result += escHtml(text.slice(lastIdx));
+  rendered.innerHTML = result;
+
+  rendered.querySelectorAll('mark[data-id]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const id = el.getAttribute('data-id');
+      const issue = issues.find(i => i.id == id);
+      if (issue) showPopup(issue, e);
+      e.stopPropagation();
+    });
+  });
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Sync textarea size to rendered ──
+editor.addEventListener('input', () => {
+  syncRendered();
+  updateStats();
+  if (autoCheck) {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(checkWriting, 1800);
+  }
+});
+
+// Overlay the textarea on rendered
+function syncScroll() { rendered.scrollTop = editor.scrollTop; }
+editor.addEventListener('scroll', syncScroll);
+
+// ── Stats ──
+function updateStats() {
+  const text = editor.value.trim();
+  const words = text ? text.split(/\s+/).filter(Boolean) : [];
+  const sentences = text ? text.split(/[.!?]+/).filter(s=>s.trim()) : [];
+  document.getElementById('wordCount').textContent = words.length;
+  document.getElementById('charCount').textContent = editor.value.length;
+  document.getElementById('sentCount').textContent = sentences.length;
+  document.getElementById('readTime').textContent = Math.max(1, Math.ceil(words.length / 200));
+  updateStyleProfile(words, sentences);
+}
+
+function updateStyleProfile(words, sentences) {
+  if (words.length < 5) return;
+  const avgSentLen = sentences.length ? (words.length / sentences.length).toFixed(1) : '—';
+  const unique = new Set(words.map(w => w.toLowerCase()));
+  const vocabRatio = ((unique.size / words.length)*100).toFixed(0) + '%';
+  const avgWordLen = (words.reduce((s,w)=>s+w.replace(/[^a-z]/gi,'').length,0)/words.length).toFixed(1);
+  const passiveRegex = /\b(is|are|was|were|been|being)\s+\w+ed\b/gi;
+  const passiveCount = (editor.value.match(passiveRegex)||[]).length;
+  const passive = sentences.length ? ((passiveCount/sentences.length)*100).toFixed(0)+'%' : '0%';
+
+  document.getElementById('pAvgSent').textContent = avgSentLen + ' words';
+  document.getElementById('pVocab').textContent = vocabRatio;
+  document.getElementById('pAvgWord').textContent = avgWordLen + ' chars';
+  document.getElementById('pPassive').textContent = passive;
+
+  const tone = avgSentLen > 20 ? 'Formal' : avgSentLen > 12 ? 'Balanced' : 'Casual';
+  document.getElementById('pTone').textContent = tone;
+
+  // Frequent words
+  const stopWords = new Set(['the','a','an','is','are','was','were','it','in','of','to','and','or','but','that','this','for','on','with','as','at','be','by','from','i','my','me','we','you','he','she','they','have','has','had','do','does','did','will','would','could','should','not','if','so','than']);
+  const freq = {};
+  words.forEach(w => {
+    const lw = w.toLowerCase().replace(/[^a-z]/g,'');
+    if (lw && !stopWords.has(lw) && lw.length > 2) freq[lw] = (freq[lw]||0)+1;
+  });
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+  const freqEl = document.getElementById('freqWords');
+  if (top.length) {
+    freqEl.innerHTML = top.map(([w,c]) => `<span class="word-chip">${w} ×${c}</span>`).join('');
+  }
+
+  styleProfile = { avgSentLen, vocabRatio, avgWordLen, passive, tone, topWords: top.slice(0,5) };
+  localStorage.setItem('wr_style', JSON.stringify(styleProfile));
+}
+
+// ── Check Writing ──
+async function checkWriting() {
+  const text = editor.value.trim();
+  if (!text || isChecking) return;
+  if (!activeModel) { notify('⚠', 'No model selected. Open ⚙ Models first.'); return; }
+
+  isChecking = true;
+  setStatus('checking', `Checking with ${activeModel}…`);
+  checkBtn.disabled = true;
+  emptyIssues.style.display = 'none';
+  issuesList.innerHTML = '<div style="padding:10px 0"><div class="ai-loading"><div class="spinner"></div>Asking ' + activeModel + '…</div></div>';
+
+  const mode = document.getElementById('modeSelect').value;
+  const accepted = acceptedCorrections.slice(-10).map(c => `"${c.from}" → "${c.to}"`).join(', ');
+
+  const prompt = `You are an expert writing assistant. Analyze the following text for grammar, spelling, and style issues.
+
+Writing mode: ${mode}
+User's accepted past corrections (their style preferences): ${accepted || 'none yet'}
+User's average sentence length: ${styleProfile.avgSentLen || 'unknown'}
+
+Text to analyze:
+"""
+${text}
+"""
+
+Return a JSON array of issues. Each issue object has these exact keys:
+{
+  "type": "grammar" or "spelling" or "style" or "suggestion",
+  "original": "exact substring from text",
+  "fix": "corrected version",
+  "reason": "short explanation (1-2 sentences)"
+}
+
+Rules:
+- "original" must be an EXACT substring of the text above, copied verbatim.
+- Max 12 issues. Prioritize the most impactful ones.
+- For "suggestion", offer improvements that match the user's style.
+- Do NOT suggest changes that match the user's accepted preferences.
+- Return ONLY the raw JSON array. No markdown fences, no explanation, no preamble.`;
+
+  try {
+    const resp = await fetch(`${ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: activeModel,
+        stream: false,
+        messages: [{ role: 'user', content: prompt }],
+        options: { temperature: 0.1 }
+      })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Ollama error ${resp.status}: ${errText}`);
+    }
+
+    const data = await resp.json();
+    const raw = (data.message?.content || data.response || '').trim();
+
+    let parsed = [];
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      // find first [ ... ] block in case model adds preamble
+      const match = clean.match(/\[[\s\S]*\]/);
+      parsed = JSON.parse(match ? match[0] : clean);
+    } catch(e) { console.warn('Parse error', e, raw); }
+
+    issues = [];
+    ignoredIssues = new Set();
+    const fullText = editor.value;
+
+    parsed.forEach((iss, idx) => {
+      if (!iss.original || !iss.fix) return;
+      const offset = fullText.indexOf(iss.original);
+      if (offset === -1) return;
+      issues.push({
+        id: idx,
+        type: iss.type || 'grammar',
+        original: iss.original,
+        fix: iss.fix,
+        reason: iss.reason || '',
+        offset
+      });
+    });
+
+    renderIssuesSidebar();
+    syncRendered();
+    updateScore();
+    setStatus('done', `${issues.length} issue${issues.length!==1?'s':''} found`);
+    document.getElementById('issueCount').textContent = issues.length ? `${issues.length} issue${issues.length!==1?'s':''} found` : 'No issues found';
+  } catch(err) {
+    console.error(err);
+    issuesList.innerHTML = `<div style="padding:10px;color:var(--red);font-size:13px;">
+      <strong>Could not reach Ollama.</strong><br/><br/>
+      Make sure you started it with:<br/>
+      <code style="font-family:'DM Mono',monospace;color:var(--amber)">OLLAMA_ORIGINS="*" ollama serve</code><br/><br/>
+      Then open <strong>⚙ Models</strong> and test the connection.
+      <br/><br/><small>${err.message}</small>
+    </div>`;
+    setStatus('', 'Connection error');
+  } finally {
+    isChecking = false;
+    checkBtn.disabled = false;
+  }
+}
+
+function renderIssuesSidebar() {
+  const visible = issues.filter(i => !ignoredIssues.has(i.id));
+  if (!visible.length) {
+    issuesList.innerHTML = '';
+    emptyIssues.style.display = 'block';
+    emptyIssues.innerHTML = '<div class="empty-icon">✅</div><div>No issues found. Great writing!</div>';
+    return;
+  }
+  emptyIssues.style.display = 'none';
+
+  issuesList.innerHTML = visible.map(issue => `
+    <div class="issue-card" data-id="${issue.id}">
+      <div class="issue-type ${issue.type}">
+        <div class="type-dot"></div>
+        ${issue.type}
+      </div>
+      <div class="issue-original">${escHtml(issue.original)}</div>
+      <div class="issue-fix">${escHtml(issue.fix)}</div>
+      <div class="issue-reason">${escHtml(issue.reason)}</div>
+      <div class="issue-actions">
+        <button class="btn btn-primary btn-sm" onclick="acceptFix(${issue.id})">Accept</button>
+        <button class="btn btn-sm" onclick="ignoreIssue(${issue.id})">Ignore</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateScore() {
+  const total = issues.length;
+  const score = total === 0 ? 100 : Math.max(0, 100 - total * 8);
+  const circ = 213.6;
+  const offset = circ - (score/100)*circ;
+  document.getElementById('scoreCircle').setAttribute('stroke-dashoffset', offset.toFixed(1));
+  document.getElementById('scoreNum').textContent = score;
+
+  document.getElementById('grammarCount').textContent = issues.filter(i=>i.type==='grammar').length;
+  document.getElementById('spellingCount').textContent = issues.filter(i=>i.type==='spelling').length;
+  document.getElementById('styleCount').textContent = issues.filter(i=>i.type==='style'||i.type==='suggestion').length;
+}
+
+// ── Accept fix ──
+function acceptFix(id) {
+  const issue = issues.find(i => i.id === id);
+  if (!issue) return;
+  const text = editor.value;
+  const newText = text.slice(0, issue.offset) + issue.fix + text.slice(issue.offset + issue.original.length);
+
+  // Update offsets for remaining issues
+  const delta = issue.fix.length - issue.original.length;
+  issues.forEach(i => { if (i.offset > issue.offset) i.offset += delta; });
+
+  issues = issues.filter(i => i.id !== id);
+  editor.value = newText;
+
+  // Learn from acceptance
+  acceptedCorrections.push({ from: issue.original, to: issue.fix });
+  if (acceptedCorrections.length > 50) acceptedCorrections.shift();
+  localStorage.setItem('wr_accepted', JSON.stringify(acceptedCorrections));
+  updateAcceptedList();
+
+  syncRendered();
+  updateStats();
+  renderIssuesSidebar();
+  updateScore();
+  popup.classList.remove('show');
+  notify('✓', `Fixed: "${issue.original}" → "${issue.fix}"`);
+}
+
+function ignoreIssue(id) {
+  ignoredIssues.add(id);
+  renderIssuesSidebar();
+  syncRendered();
+  updateScore();
+  popup.classList.remove('show');
+}
+
+function updateAcceptedList() {
+  const el = document.getElementById('acceptedList');
+  const list = acceptedCorrections.slice(-8).reverse();
+  if (!list.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);">No accepted corrections yet.</div>'; return; }
+  el.innerHTML = list.map(c => `
+    <div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--red);text-decoration:line-through;">${escHtml(c.from)}</span>
+      <span style="color:var(--text3);">→</span>
+      <span style="color:var(--green);">${escHtml(c.to)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Popup ──
+function showPopup(issue, e) {
+  currentPopupIssue = issue;
+  document.getElementById('popupTitle').textContent = issue.type.charAt(0).toUpperCase()+issue.type.slice(1);
+  document.getElementById('popupFix').textContent = issue.fix;
+  document.getElementById('popupReason').textContent = issue.reason;
+  popup.classList.add('show');
+
+  const rect = popup.getBoundingClientRect();
+  let x = e.clientX + 10;
+  let y = e.clientY + 10;
+  if (x + 290 > window.innerWidth) x = e.clientX - 290;
+  if (y + 160 > window.innerHeight) y = e.clientY - 160;
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+}
+
+document.getElementById('popupAccept').addEventListener('click', () => {
+  if (currentPopupIssue) acceptFix(currentPopupIssue.id);
+});
+
+document.getElementById('popupIgnore').addEventListener('click', () => {
+  if (currentPopupIssue) ignoreIssue(currentPopupIssue.id);
+});
+
+document.addEventListener('click', (e) => {
+  if (!popup.contains(e.target)) popup.classList.remove('show');
+});
+
+// ── Status ──
+function setStatus(state, text) {
+  statusDot.className = 'dot' + (state ? ' ' + state : '');
+  statusText.textContent = text;
+}
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Buttons ──
+checkBtn.addEventListener('click', checkWriting);
+
+clearBtn.addEventListener('click', () => {
+  editor.value = '';
+  issues = [];
+  ignoredIssues = new Set();
+  rendered.textContent = '';
+  issuesList.innerHTML = '';
+  emptyIssues.style.display = 'block';
+  emptyIssues.innerHTML = '<div class="empty-icon">🔍</div><div>Click <strong>Check Writing</strong> or start typing.<br/>Issues will appear here.</div>';
+  updateStats();
+  updateScore();
+  setStatus('', 'Start writing to check');
+  document.getElementById('issueCount').textContent = 'No issues found';
+});
+
+autoCheckBtn.addEventListener('click', () => {
+  autoCheck = !autoCheck;
+  autoCheckBtn.style.color = autoCheck ? 'var(--green)' : '';
+  autoCheckBtn.style.borderColor = autoCheck ? 'var(--green)' : '';
+  notify(autoCheck ? '⚡' : '⏸', autoCheck ? 'Auto-check enabled' : 'Auto-check disabled');
+});
+
+// ── Notify ──
+function notify(icon, text) {
+  const n = document.getElementById('notif');
+  document.getElementById('notifIcon').textContent = icon;
+  document.getElementById('notifText').textContent = text;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 2800);
+}
+
+// ── Init ──
+updateStats();
+updateAcceptedList();
+updateScore();
+populateModelSelect();
+
+// Update badge with active model
+const badge = document.getElementById('ollamaBadge');
+document.getElementById('modelSelect').addEventListener('change', () => {
+  badge.textContent = `⬡ ${activeModel}`;
+});
+
+// Sync textarea height to rendered
+function syncHeight() {
+  const h = Math.max(400, rendered.scrollHeight);
+  editor.style.height = h + 'px';
+}
+
+editor.addEventListener('input', syncHeight);
+setTimeout(syncHeight, 100);
+
+// Make window.acceptFix and ignoreIssue global
+window.acceptFix = acceptFix;
+window.ignoreIssue = ignoreIssue;
+</script>
+</body>
+</html>
